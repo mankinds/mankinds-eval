@@ -1,0 +1,14 @@
+name: qa_scorer
+methods:
+  - type: heuristic.FuzzyMatch
+    threshold: 0.8
+    algorithm: ratio
+    target: expected
+  - type: heuristic.TextLength
+    min_length: 20
+    max_length: 500
+  - type: llm.SingleCriterionJudge
+    provider: openai
+    criterion: "Is the response accurate and helpful?"
+    scale: "1-5"
+    threshold: 3

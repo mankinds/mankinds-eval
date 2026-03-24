@@ -1,0 +1,120 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mankinds-eval"
+version = "1.0.0"
+description = "Open source Python library providing evaluation methods for AI systems"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+    {name = "Mankinds team", email = "team@mankinds.io"}
+]
+keywords = [
+    "llm",
+    "evaluation",
+    "ai",
+    "testing",
+    "rag",
+    "nlp",
+    "machine-learning",
+    "llm-as-judge",
+    "ai-evaluation",
+    "deepeval",
+    "ragas",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+    "Natural Language :: English",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "rapidfuzz>=3.0",
+    "sacrebleu>=2.0",
+    "rouge-score>=0.1.2",
+    "typer>=0.9.0",
+    "jsonschema>=4.0",
+    "langdetect>=1.0.9",
+    "rich>=13.0.0",
+    "tenacity>=8.0.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch>=2.0",
+    "transformers>=4.30.0",
+    "sentence-transformers>=2.2.0",
+]
+llm = [
+    "litellm>=1.0.0",
+]
+all = [
+    "mankinds-eval[ml,llm]",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-PyYAML>=6.0",
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+[project.scripts]
+mankinds-eval = "mankinds_eval.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mankinds-io/mankinds-eval"
+Documentation = "https://mankinds-io.github.io/mankinds-eval"
+Repository = "https://github.com/mankinds-io/mankinds-eval"
+Changelog = "https://github.com/mankinds-io/mankinds-eval/blob/main/CHANGELOG.md"
+Issues = "https://github.com/mankinds-io/mankinds-eval/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mankinds_eval*"]
+
+[tool.setuptools.package-data]
+mankinds_eval = ["py.typed"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "transformers.*",
+    "sentence_transformers.*",
+    "litellm.*",
+    "sacrebleu.*",
+    "rouge_score.*",
+    "rapidfuzz.*",
+    "langdetect.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]

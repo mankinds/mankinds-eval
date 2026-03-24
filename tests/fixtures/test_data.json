@@ -1,0 +1,4 @@
+[
+  {"input": "What is Python?", "output": "Python is a programming language.", "expected": "Python is a programming language."},
+  {"input": "What is 2+2?", "output": "The answer is 4.", "expected": "4"}
+]
