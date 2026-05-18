@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-18
+
+### Added
+- `LLMProvider` and `LLMMethod` now accept a `provider_kwargs: dict | None`
+  parameter that is forwarded verbatim to `litellm.acompletion`. Use it to pass
+  provider-specific authentication or routing arguments (eg. `vertex_credentials`,
+  `vertex_project`, `vertex_location` for Google Vertex AI; `aws_region_name`
+  for Bedrock; `api_version` for Azure). The wrapper itself stays generic and
+  does not need to know about each provider's auth model.
+
+### Changed
+- `_get_model_string` is now generic: any litellm-supported provider works
+  without code change (model gets prefixed with `<provider>/` when the bare
+  name is given, untouched when already prefixed; `openai` stays unprefixed
+  as the litellm default).
+- The API key is now passed directly to `litellm.acompletion` via the
+  `api_key` parameter instead of being injected into a per-provider environment
+  variable. LiteLLM's environment fallback still applies when no key is provided,
+  so existing code that relies on `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` /
+  `MISTRAL_API_KEY` env vars keeps working.
+
+### Removed
+- Internal `_setup_api_key` helper that set hardcoded environment variables
+  for a closed list of providers. Replaced by direct `api_key` pass-through,
+  which works for every provider supported by litellm.
+
 ## [0.1.0] - 2024-XX-XX
 
 ### Added

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from tenacity import (
@@ -47,14 +46,38 @@ class LLMProvider:
     """Wrapper around litellm for LLM calls.
 
     This class provides a unified interface to various LLM providers through litellm.
-    It handles API key management, model string formatting, and provides both
-    async and sync completion methods.
+    The implementation stays generic: model strings follow the litellm convention
+    ``<provider>/<model>`` (``openai`` being the implicit default), the API key is
+    forwarded directly to ``litellm.acompletion``, and any provider-specific auth
+    parameter (eg. ``vertex_credentials`` for Google Vertex AI, ``aws_region_name``
+    for Bedrock, ``api_version`` for Azure) is passed through ``provider_kwargs``.
 
-    Example:
-        provider = LLMProvider(provider="openai", model="gpt-4o-mini")
-        response = await provider.complete([
-            {"role": "user", "content": "Hello!"}
-        ])
+    Examples:
+        Basic OpenAI / Anthropic / Mistral usage:
+
+            provider = LLMProvider(provider="openai", model="gpt-4o-mini",
+                                   api_key="sk-...")
+            await provider.complete([{"role": "user", "content": "Hello!"}])
+
+        Google Vertex AI (service-account auth):
+
+            provider = LLMProvider(
+                provider="vertex_ai",
+                model="gemini-2.5-flash",
+                provider_kwargs={
+                    "vertex_credentials": '{"type":"service_account",...}',
+                    "vertex_project": "my-gcp-project",
+                    "vertex_location": "global",
+                },
+            )
+
+        AWS Bedrock:
+
+            provider = LLMProvider(
+                provider="bedrock",
+                model="anthropic.claude-3-opus-20240229-v1:0",
+                provider_kwargs={"aws_region_name": "us-east-1"},
+            )
     """
 
     def __init__(
@@ -68,21 +91,41 @@ class LLMProvider:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_min_wait: float = DEFAULT_MIN_WAIT,
         retry_max_wait: float = DEFAULT_MAX_WAIT,
+        provider_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the LLM provider.
 
         Args:
-            provider: Provider name (e.g., "openai", "anthropic", "mistral", "ollama").
+            provider: Provider name (any litellm-supported provider:
+                "openai", "anthropic", "mistral", "ollama", "groq", "gemini",
+                "vertex_ai", "bedrock", "azure", "cohere", ...).
             model: Model name. Defaults based on provider if not specified.
-            api_key: API key. Falls back to environment variables if not provided.
-            api_base: Custom API base URL (useful for ollama, local deployments).
+                May be passed pre-prefixed (``"vertex_ai/gemini-2.5-flash"``) or
+                bare (``"gemini-2.5-flash"``) — the prefix is added automatically
+                when missing, following the litellm convention.
+            api_key: API key for providers that authenticate via a single token
+                (openai, anthropic, mistral, groq, cohere, gemini AI Studio…).
+                Falls back to the provider-specific environment variable that
+                litellm reads natively when ``None``. For cloud providers that
+                use service accounts / IAM (vertex_ai, bedrock), leave this
+                ``None`` and pass the auth payload via ``provider_kwargs``.
+            api_base: Custom API base URL (useful for ollama, on-prem deployments,
+                Azure, OpenAI-compatible endpoints).
             temperature: Sampling temperature. Defaults to 0.0 for deterministic output.
             max_tokens: Maximum tokens in response. Defaults to 1024.
             max_retries: Maximum number of retry attempts for failed requests.
             retry_min_wait: Minimum wait time between retries in seconds.
             retry_max_wait: Maximum wait time between retries in seconds.
-            **kwargs: Additional parameters passed to litellm.
+            provider_kwargs: Opaque dict forwarded verbatim to ``litellm.acompletion``.
+                Use it for provider-specific auth or routing parameters that don't fit
+                into ``api_key`` / ``api_base`` (eg. ``vertex_credentials``,
+                ``vertex_project``, ``vertex_location``, ``aws_region_name``,
+                ``api_version`` for Azure). LiteLLM is the source of truth for the
+                accepted keys.
+            **kwargs: Additional parameters passed to litellm at call time. Kept
+                for backward compatibility — new code should prefer ``provider_kwargs``
+                for provider-specific arguments.
         """
         if not LITELLM_AVAILABLE:
             raise ImportError(
@@ -97,10 +140,8 @@ class LLMProvider:
         self.max_retries = max_retries
         self.retry_min_wait = retry_min_wait
         self.retry_max_wait = retry_max_wait
+        self.provider_kwargs: dict[str, Any] = provider_kwargs or {}
         self.extra_params: dict[str, Any] = kwargs
-
-        # Set API key in environment if provided explicitly
-        self._setup_api_key()
 
     def _default_model(self, provider: str) -> str:
         """Return default model for each provider.
@@ -120,34 +161,20 @@ class LLMProvider:
         }
         return defaults.get(provider, provider)
 
-    def _setup_api_key(self) -> None:
-        """Set API key in environment if provided."""
-        if self.api_key:
-            key_map = {
-                "openai": "OPENAI_API_KEY",
-                "anthropic": "ANTHROPIC_API_KEY",
-                "mistral": "MISTRAL_API_KEY",
-            }
-            env_var = key_map.get(self.provider)
-            if env_var:
-                os.environ[env_var] = self.api_key
-
     def _get_model_string(self) -> str:
-        """Get litellm model string.
+        """Return the litellm-compatible model string.
 
-        litellm uses format: provider/model for some providers.
-
-        Returns:
-            Model string formatted for litellm.
+        LiteLLM uses ``<provider>/<model>`` for every provider except ``openai``
+        (which is the implicit default and works without prefix). When the model
+        already contains ``/`` we assume the caller has pre-formatted it and we
+        pass it through untouched. This keeps the wrapper generic: any future
+        litellm provider works without code change.
         """
-        if self.provider == "ollama":
-            return f"ollama/{self.model}"
-        if self.provider == "anthropic":
-            return f"anthropic/{self.model}"
-        if self.provider == "mistral":
-            return f"mistral/{self.model}"
-        # OpenAI doesn't need prefix
-        return self.model
+        if self.model and "/" in self.model:
+            return self.model
+        if self.provider == "openai":
+            return self.model
+        return f"{self.provider}/{self.model}"
 
     async def complete(
         self,
@@ -189,7 +216,9 @@ class LLMProvider:
                 messages=messages,
                 temperature=temperature if temperature is not None else self.temperature,
                 max_tokens=max_tokens if max_tokens is not None else self.max_tokens,
+                api_key=self.api_key,
                 api_base=self.api_base,
+                **self.provider_kwargs,
                 **self.extra_params,
                 **kwargs,
             )

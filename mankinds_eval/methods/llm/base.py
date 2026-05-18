@@ -34,18 +34,30 @@ class LLMMethod(Method):
         temperature: float = 0.0,
         max_tokens: int = 1024,
         max_concurrent: int | None = None,
+        provider_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the LLM method.
 
         Args:
-            provider: LLM provider name (e.g., "openai", "anthropic", "mistral").
+            provider: LLM provider name (any litellm-supported provider, eg.
+                "openai", "anthropic", "mistral", "ollama", "vertex_ai",
+                "bedrock", "azure", "gemini", ...).
             model: Model name. Defaults based on provider if not specified.
-            api_key: API key. Falls back to environment variables if not provided.
-            api_base: Custom API base URL (useful for ollama, local deployments).
+            api_key: API key for providers that use one. Falls back to
+                environment variables when ``None``. Leave ``None`` for cloud
+                providers that authenticate via service account / IAM and pass
+                the auth payload through ``provider_kwargs`` instead.
+            api_base: Custom API base URL (useful for ollama, local deployments,
+                Azure, OpenAI-compatible endpoints).
             temperature: Sampling temperature. Defaults to 0.0 for deterministic output.
             max_tokens: Maximum tokens in response. Defaults to 1024.
             max_concurrent: Method-specific concurrency limit for batch evaluation.
+            provider_kwargs: Opaque dict forwarded verbatim to ``litellm.acompletion``
+                at call time. Use it for provider-specific auth or routing
+                parameters (eg. ``vertex_credentials``, ``vertex_project``,
+                ``vertex_location``, ``aws_region_name``, ``api_version``).
+                See ``LLMProvider`` for documented examples.
             **kwargs: Additional parameters passed to parent Method.
         """
         super().__init__(**kwargs)
@@ -56,5 +68,6 @@ class LLMMethod(Method):
             api_base=api_base,
             temperature=temperature,
             max_tokens=max_tokens,
+            provider_kwargs=provider_kwargs,
         )
         self.max_concurrent = max_concurrent
