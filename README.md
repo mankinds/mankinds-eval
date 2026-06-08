@@ -1,12 +1,27 @@
+<p align="center">
+  <a href="https://github.com/mankinds-io/mankinds-eval">
+    <img src="assets/logo.svg" alt="Mankinds" width="320" />
+  </a>
+</p>
 
+<p align="center">
+  <strong>Open source Python library for AI evaluation</strong>
+</p>
 
-# mankinds-eval
+<p align="center">
+  <a href="https://pypi.org/project/mankinds-eval/"><img src="https://img.shields.io/pypi/v/mankinds-eval?style=flat-square&color=637AB9" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/mankinds-eval/"><img src="https://img.shields.io/pypi/pyversions/mankinds-eval?style=flat-square&color=637AB9" alt="Python versions" /></a>
+  <a href="https://github.com/mankinds-io/mankinds-eval/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-637AB9?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/mankinds-io/mankinds-eval/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/mankinds-io/mankinds-eval/ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
+  <a href="https://pypi.org/project/mankinds-eval/"><img src="https://img.shields.io/pypi/dm/mankinds-eval?style=flat-square&color=637AB9" alt="Downloads" /></a>
+</p>
 
-**Open source Python library for AI evaluation**
-
-
-
-[Documentation](https://mankinds-io.github.io/mankinds-eval) | [Metrics and Features](#metrics-and-features) | [Quick Start](#quick-start) | [Examples](https://github.com/mankinds-io/mankinds-eval/tree/main/examples)
+<p align="center">
+  <a href="https://mankinds-io.github.io/mankinds-eval">Documentation</a> |
+  <a href="#metrics-and-features">Metrics and Features</a> |
+  <a href="#quick-start">Quick Start</a> |
+  <a href="https://github.com/mankinds-io/mankinds-eval/tree/main/examples">Examples</a>
+</p>
 
 ---
 
