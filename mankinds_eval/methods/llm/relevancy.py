@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import re
 from typing import Any
 
 from mankinds_eval.core import MethodResult, Sample
 from mankinds_eval.methods.llm.base import LLMMethod
+from mankinds_eval.utils import extract_json_object
 
 
 class AnswerRelevancy(LLMMethod):
@@ -174,14 +173,7 @@ class AnswerRelevancy(LLMMethod):
         Raises:
             ValueError: If response cannot be parsed.
         """
-        json_match = re.search(r"\{[^{}]*\}", response, re.DOTALL)
-        if not json_match:
-            raise ValueError(f"No JSON found in response: {response}")
-
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in response: {response}") from e
+        data = extract_json_object(response)
 
         raw_score = data.get("score")
         if raw_score is None:

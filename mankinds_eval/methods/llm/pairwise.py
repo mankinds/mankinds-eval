@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import re
 from typing import Any, Literal
 
 from mankinds_eval.core import MethodResult, Sample
 from mankinds_eval.methods.llm.base import LLMMethod
+from mankinds_eval.utils import extract_json_object
 
 WinnerType = Literal["A", "B", "tie"]
 
@@ -189,15 +188,7 @@ class PairwiseJudge(LLMMethod):
         Raises:
             ValueError: If response cannot be parsed.
         """
-        # Try to extract JSON from the response
-        json_match = re.search(r"\{[^{}]*\}", response, re.DOTALL)
-        if not json_match:
-            raise ValueError(f"No JSON found in response: {response}")
-
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in response: {response}") from e
+        data = extract_json_object(response)
 
         # Extract winner
         raw_winner = data.get("winner")

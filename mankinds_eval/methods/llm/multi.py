@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import re
 from typing import Any, TypedDict
 
 from mankinds_eval.core import MethodResult, Sample
 from mankinds_eval.methods.llm.base import LLMMethod
+from mankinds_eval.utils import extract_json_object
 
 
 class CriterionConfig(TypedDict, total=False):
@@ -209,15 +208,7 @@ class MultiCriteriaJudge(LLMMethod):
         Raises:
             ValueError: If response cannot be parsed.
         """
-        # Try to extract JSON from the response
-        json_match = re.search(r"\{[\s\S]*\}", response, re.DOTALL)
-        if not json_match:
-            raise ValueError(f"No JSON found in response: {response}")
-
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in response: {response}") from e
+        data = extract_json_object(response)
 
         result: dict[str, dict[str, float | str]] = {}
 

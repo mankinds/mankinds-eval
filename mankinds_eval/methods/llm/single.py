@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import re
 from typing import Any
 
 from mankinds_eval.core import MethodResult, Sample
 from mankinds_eval.methods.llm.base import LLMMethod
+from mankinds_eval.utils import extract_json_object
 
 
 class SingleCriterionJudge(LLMMethod):
@@ -168,16 +167,9 @@ class SingleCriterionJudge(LLMMethod):
         Raises:
             ValueError: If response cannot be parsed.
         """
-        # Try to extract JSON from the response
-        # Handle cases where LLM might include extra text
-        json_match = re.search(r"\{[^{}]*\}", response, re.DOTALL)
-        if not json_match:
-            raise ValueError(f"No JSON found in response: {response}")
-
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in response: {response}") from e
+        # Extract JSON robustly: handles extra prose, markdown fences, braces
+        # inside string values, and responses truncated at the token limit.
+        data = extract_json_object(response)
 
         # Extract score
         raw_score = data.get("score")
