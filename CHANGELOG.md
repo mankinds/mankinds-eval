@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-06-08
+
+### Changed
+- LLM judge methods now extract their JSON verdict through a shared, robust
+  `extract_json_object` utility instead of a naive regex. It strips markdown
+  code fences, skips leading prose, ignores braces nested inside string values,
+  and repairs responses truncated by the model's `max_tokens` ceiling (closing
+  unterminated strings and unclosed objects/arrays) so a verdict cut off mid
+  `reason` field can still be parsed.
+
 ## [1.1.0] - 2026-05-18
 
 ### Added

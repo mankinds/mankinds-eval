@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mankinds-eval"
-version = "1.1.0"
+version = "1.1.1"
 description = "Open source Python library providing evaluation methods for AI systems"
 readme = "README.md"
 license = "Apache-2.0"
