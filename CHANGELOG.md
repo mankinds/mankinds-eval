@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-06-09
+
+### Changed
+- `LLMProvider` now raises an explicit, diagnostic `ValueError` when the model
+  returns no `choices` or a null message `content` (instead of crashing on an
+  attribute/index access). The error message includes safe diagnostics —
+  finish reason, token usage, safety ratings, prompt feedback, and per-message
+  character counts — to help debug provider-side refusals and content filters.
+
+### Security
+- Diagnostic payloads redact sensitive fields (prompt/message/content/output
+  text) and truncate long values, so logged or surfaced errors never leak the
+  evaluated content.
+
 ## [1.1.1] - 2026-06-08
 
 ### Changed

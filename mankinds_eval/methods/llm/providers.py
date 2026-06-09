@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from contextlib import suppress
 from typing import Any
 
 from tenacity import (
@@ -40,6 +42,70 @@ except ImportError:
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_MIN_WAIT = 1
 DEFAULT_MAX_WAIT = 60
+
+logger = logging.getLogger(__name__)
+
+_SENSITIVE_DIAGNOSTIC_KEYS = (
+    "content",
+    "input",
+    "message",
+    "messages",
+    "output",
+    "prompt",
+    "text",
+)
+
+
+def _get_attr(obj: Any, name: str) -> Any:
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _to_plain_diagnostic_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if hasattr(value, "model_dump"):
+        with suppress(Exception):
+            return value.model_dump()
+    elif hasattr(value, "to_dict"):
+        with suppress(Exception):
+            return value.to_dict()
+    elif hasattr(value, "__dict__"):
+        with suppress(Exception):
+            return vars(value)
+    return value
+
+
+def _redact_diagnostic_value(value: Any, depth: int = 0) -> Any:
+    value = _to_plain_diagnostic_value(value)
+    if depth >= 4:
+        return f"<{type(value).__name__}>"
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            key_text = str(key)
+            if any(sensitive in key_text.lower() for sensitive in _SENSITIVE_DIAGNOSTIC_KEYS):
+                redacted[key_text] = "[redacted]"
+            else:
+                redacted[key_text] = _redact_diagnostic_value(item, depth + 1)
+        return redacted
+    if isinstance(value, (list, tuple, set)):
+        return [_redact_diagnostic_value(item, depth + 1) for item in list(value)[:10]]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return f"<{type(value).__name__}>"
+
+
+def _compact(value: Any, max_len: int = 500) -> str | None:
+    if value is None:
+        return None
+    text = repr(_redact_diagnostic_value(value))
+    if len(text) > max_len:
+        return text[:max_len] + "...[truncated]"
+    return text
 
 
 class LLMProvider:
@@ -222,9 +288,62 @@ class LLMProvider:
                 **self.extra_params,
                 **kwargs,
             )
-            return str(response.choices[0].message.content)
+            choices = _get_attr(response, "choices")
+            if not choices:
+                diagnostics = self._response_diagnostics(response, messages)
+                logger.debug("LLM provider returned no choices: %s", diagnostics)
+                raise ValueError(f"LLM returned no choices: {diagnostics}")
+
+            choice = choices[0]
+            message = _get_attr(choice, "message")
+            content = _get_attr(message, "content")
+            if content is None:
+                diagnostics = self._response_diagnostics(
+                    response, messages, choice=choice,
+                )
+                logger.debug("LLM provider returned null content: %s", diagnostics)
+                raise ValueError(f"LLM returned null content: {diagnostics}")
+
+            return str(content)
 
         return await _complete_with_retry()
+
+    def _response_diagnostics(
+        self,
+        response: Any,
+        messages: list[dict[str, Any]],
+        *,
+        choice: Any = None,
+    ) -> dict[str, Any]:
+        usage = _get_attr(response, "usage")
+        message = _get_attr(choice, "message")
+        return {
+            "provider": self.provider,
+            "model": self.model,
+            "litellm_model": self._get_model_string(),
+            "finish_reason": _get_attr(choice, "finish_reason"),
+            "response_id": _get_attr(response, "id"),
+            "response_model": _get_attr(response, "model"),
+            "usage": {
+                "prompt_tokens": _get_attr(usage, "prompt_tokens"),
+                "completion_tokens": _get_attr(usage, "completion_tokens"),
+                "total_tokens": _get_attr(usage, "total_tokens"),
+            },
+            "prompt_feedback": _compact(_get_attr(response, "prompt_feedback")),
+            "response_safety_ratings": _compact(_get_attr(response, "safety_ratings")),
+            "choice_safety_ratings": _compact(_get_attr(choice, "safety_ratings")),
+            "message_safety_ratings": _compact(_get_attr(message, "safety_ratings")),
+            "message_role": _get_attr(message, "role"),
+            "message_tool_calls": bool(_get_attr(message, "tool_calls")),
+            "message_count": len(messages),
+            "message_chars_by_role": [
+                {
+                    "role": m.get("role"),
+                    "chars": len(str(m.get("content") or "")),
+                }
+                for m in messages
+            ],
+        }
 
     def complete_sync(
         self,

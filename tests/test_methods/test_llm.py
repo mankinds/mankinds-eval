@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -554,6 +555,70 @@ class TestSingleCriterionJudgeEvaluate:
         mock_litellm.acompletion.assert_called_once()
         call_kwargs = mock_litellm.acompletion.call_args
         assert "messages" in call_kwargs.kwargs or len(call_kwargs.args) > 0
+
+    @pytest.mark.asyncio
+    @patch("mankinds_eval.methods.llm.providers.LITELLM_AVAILABLE", True)
+    @patch("mankinds_eval.methods.llm.providers.litellm")
+    async def test_safe_evaluate_reports_null_provider_content(
+        self, mock_litellm: MagicMock,
+    ) -> None:
+        """Test provider diagnostics when LiteLLM returns content=None."""
+        mock_litellm.acompletion = AsyncMock(
+            return_value=SimpleNamespace(
+                id="resp-123",
+                model="vertex_ai/gemini-test",
+                usage=SimpleNamespace(
+                    prompt_tokens=10,
+                    completion_tokens=0,
+                    total_tokens=10,
+                ),
+                prompt_feedback={
+                    "block_reason": "SAFETY",
+                    "prompt_text": "user-secret-token-123",
+                },
+                safety_ratings=None,
+                choices=[
+                    SimpleNamespace(
+                        finish_reason="safety",
+                        safety_ratings=[
+                            {
+                                "category": "dangerous",
+                                "probability": "HIGH",
+                                "message_text": "assistant-sensitive-output-456",
+                            }
+                        ],
+                        message=SimpleNamespace(
+                            role="assistant",
+                            content=None,
+                            tool_calls=None,
+                            safety_ratings=None,
+                        ),
+                    )
+                ],
+            )
+        )
+
+        judge = SingleCriterionJudge(
+            criterion="safety",
+            scale="binary",
+            provider="vertex_ai",
+            model="gemini-test",
+        )
+        result = await judge.safe_evaluate(
+            Sample(
+                input="user-secret-token-123",
+                output="assistant-sensitive-output-456",
+            )
+        )
+
+        assert result.score is None
+        assert result.error is not None
+        assert "LLM returned null content" in result.error
+        assert "finish_reason" in result.error
+        assert "safety" in result.error
+        assert "prompt_feedback" in result.error
+        assert "user-secret-token-123" not in result.error
+        assert "assistant-sensitive-output-456" not in result.error
 
 
 class TestSingleCriterionJudgeScaleDescription:
