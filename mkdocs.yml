@@ -1,7 +1,7 @@
 site_name: mankinds-eval
 site_description: Open source Python library for AI evaluation
-repo_url: https://github.com/mankinds-io/mankinds-eval
-repo_name: mankinds-io/mankinds-eval
+repo_url: https://github.com/mankinds/mankinds-eval
+repo_name: mankinds/mankinds-eval
 
 theme:
   name: material

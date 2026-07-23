@@ -82,11 +82,11 @@ dev = [
 mankinds-eval = "mankinds_eval.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mankinds-io/mankinds-eval"
-Documentation = "https://mankinds-io.github.io/mankinds-eval"
-Repository = "https://github.com/mankinds-io/mankinds-eval"
-Changelog = "https://github.com/mankinds-io/mankinds-eval/blob/main/CHANGELOG.md"
-Issues = "https://github.com/mankinds-io/mankinds-eval/issues"
+Homepage = "https://github.com/mankinds/mankinds-eval"
+Documentation = "https://mankinds.github.io/mankinds-eval"
+Repository = "https://github.com/mankinds/mankinds-eval"
+Changelog = "https://github.com/mankinds/mankinds-eval/blob/main/CHANGELOG.md"
+Issues = "https://github.com/mankinds/mankinds-eval/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
